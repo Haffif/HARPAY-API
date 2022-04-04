@@ -1,0 +1,29 @@
+{
+  "name": "harpay-api",
+  "version": "1.0.0",
+  "description": "Repo ini merupakan repo untuk back-end dari HARPAY mata kuliah Pemrograman Integratif A",
+  "main": "app.js",
+  "dependencies": {
+    "bcrypt": "^5.0.1",
+    "body-parser": "^1.20.0",
+    "express": "^4.17.3",
+    "jsonwebtoken": "^8.5.1",
+    "mongoose": "^6.2.9",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Haffif/HARPAY-API.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Haffif/HARPAY-API/issues"
+  },
+  "homepage": "https://github.com/Haffif/HARPAY-API#readme"
+}
