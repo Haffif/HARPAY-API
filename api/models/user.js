@@ -20,6 +20,12 @@ const userSchema = mongoose.Schema({
     type: String,
     required: true,
   },
+  pin: {
+    type: Number,
+  },
+  saldo: {
+    type: Number,
+  },
 });
 
-module.exports = mongoose.model("Users", userSchema);
+module.exports = mongoose.model("User", userSchema);

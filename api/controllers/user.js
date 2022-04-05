@@ -105,3 +105,37 @@ exports.userLogin = (req, res, next) => {
       });
     });
 };
+
+exports.userUpdatePin = (req, res, next) => {
+  const userId = req.userData._id;
+  if (req.body.pin) {
+    if (req.body.konfirmasiPin) {
+      if (req.body.pin === req.body.konfirmasiPin) {
+        User.findByIdAndUpdate(userId, { $set: req.body }, { new: true })
+          .exec()
+          .then((result) => {
+            res.status(200).json({
+              message: "Pin updated",
+            });
+          })
+          .catch((err) => {
+            res.status(500).json({
+              error: err,
+            });
+          });
+      } else {
+        res.status(401).json({
+          message: "Pin confirmation failed",
+        });
+      }
+    } else {
+      res.status(404).json({
+        message: "Field konfirmasiPin is required",
+      });
+    }
+  } else {
+    res.status(404).json({
+      message: "Field pin is required",
+    });
+  }
+};
