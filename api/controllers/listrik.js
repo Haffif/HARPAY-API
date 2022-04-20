@@ -25,7 +25,6 @@ exports.createListrikRumah = (req, res, next) => {
 	const listrikRumah = new ListrikRumah({
 		_id: new mongoose.Types.ObjectId(),
 		namaPemilik: req.body.namaPemilik,
-		idPelanggan: req.body.idPelanggan,
 		alamatRumah: req.body.alamatRumah,
 	});
 
@@ -61,7 +60,6 @@ exports.createTokenRumah = (req, res, next) => {
 	const tokenRumah = new TokenRumah({
 		_id: new mongoose.Types.ObjectId(),
 		namaPemilik: req.body.namaPemilik,
-		idPelanggan: req.body.idPelanggan,
 		alamatRumah: req.body.alamatRumah,
 	});
 

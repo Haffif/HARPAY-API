@@ -22,6 +22,7 @@ const userSchema = mongoose.Schema({
   },
   pin: {
     type: Number,
+    required: true,
   },
   saldo: {
     type: Number,

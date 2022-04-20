@@ -2,11 +2,6 @@ const mongoose = require("mongoose");
 
 const listrikRumah = mongoose.Schema({
   _id: mongoose.Schema.Types.ObjectId,
-  idPelanggan: {
-    type: Number,
-    required: true,
-    unique: true,
-  },
   namaPemilik: {
     type: String,
     required: true,
@@ -18,7 +13,11 @@ const listrikRumah = mongoose.Schema({
   pembayaranBulan: {
     type: Boolean,
     default: false,
-  }
+  },
+  jumlahBayarBulan: {
+    type: Number,
+    default: 0,
+  },
 });
 
 module.exports = mongoose.model("ListrikRumah", listrikRumah);

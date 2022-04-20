@@ -2,11 +2,6 @@ const mongoose = require("mongoose");
 
 const tokenRumah = mongoose.Schema({
   _id: mongoose.Schema.Types.ObjectId,
-  idPelanggan: {
-    type: Number,
-    required: true,
-    unique: true,
-  },
   namaPemilik: {
     type: String,
     required: true,

@@ -3,6 +3,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const User = require("../models/user");
+const ListrikRumah = require("../models/listrikRumah");
+const TokenRumah = require("../models/tokenRumah");
 
 exports.userSignup = (req, res, next) => {
   User.find({ email: req.body.email })
@@ -27,7 +29,8 @@ exports.userSignup = (req, res, next) => {
                   email: req.body.email,
                   noTelp: req.body.noTelp,
                   password: hash,
-                  saldo: 0
+                  saldo: 0,
+                  pin: req.body.pin
                 });
 
                 user
@@ -185,6 +188,92 @@ exports.userTopup = (req, res, next) => {
   } else {
     res.status(400).json({
       message: "Field nominal is required",
+    });
+  }
+}
+
+exports.userCekBayarListrik = (req, res, next) => {
+  if (req.body.idPelanggan) {
+    ListrikRumah.findById(req.body.idPelanggan)
+      .select("namaPemilik alamatRumah pembayaranBulan jumlahBayarBulan")
+      .exec()
+      .then(listrikRumah => {
+        if (!listrikRumah.pembayaranBulan) {
+          res.status(200).json({
+            message: "Please do a payment for this month",
+            data: listrikRumah
+          })
+        } else {
+          res.status(400).json({ message: "ID pelanggan already made payment for this month" });
+        }
+      })
+      .catch(err => res.status(500).json({ error: err }))
+  } else {
+    res.status(400).json({
+      message: "Field idPelanggan is required",
+    });
+  }
+}
+
+exports.userBayarListrik = (req, res, next) => {
+  const userId = req.userData._id;
+
+  if (req.body.idPelanggan) {
+    if (req.body.pin) {
+      User.findById(userId)
+        .exec()
+        .then(user => {
+          ListrikRumah.findById(req.body.idPelanggan)
+            .exec()
+            .then(result => {
+              if (result) {
+                if (!result.pembayaranBulan) {
+                  const tagihan = result.jumlahBayarBulan;
+                  let saldoUser = user.saldo;
+                  if (saldoUser >= tagihan) {
+                    if (req.body.pin == user.pin) {
+                      saldoUser = saldoUser - tagihan;
+                      ListrikRumah.findByIdAndUpdate(req.body.idPelanggan, { "pembayaranBulan": true, "jumlahBayarBulan": 0 }, { new: true })
+                        .exec()
+                        .then((result2) => {
+                          User.findByIdAndUpdate(userId, { "saldo": saldoUser }, { new: true })
+                            .exec()
+                            .then(result3 => {
+                              res.status(201).json({
+                                message: "Payment for pembayaran listrik successfully",
+                              });
+                            })
+                            .catch(err => res.status(500).json({ error: err }))
+                        })
+                        .catch((err) => {
+                          res.status(500).json({
+                            error: err,
+                          });
+                        });
+                    } else {
+                      res.status(400).json({ message: "Pin confirmation failed" });
+                    }
+                  } else {
+                    res.status(400).json({ message: "Your balance is not enough, please topup for do this transaction" });
+                  }
+                } else {
+                  res.status(400).json({ message: "ID pelanggan already made payment for this month" });
+                }
+              } else {
+                res.status(404).json({ message: "No valid entry found for that ID pelanggan" });
+              }
+            })
+            .catch(err => res.status(500).json({ error: err }))
+        })
+        .catch(err => res.status(500).json({ message: "Something error", error: err }))
+    } else {
+      res.status(400).json({
+        message: "Field pin is required",
+      });
+    }
+  } else {
+    res.status(400).json({
+      message: "Field idPelanggan is required",
     });
   }
 }
