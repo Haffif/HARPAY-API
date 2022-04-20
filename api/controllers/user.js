@@ -375,3 +375,52 @@ exports.userBeliToken = (req, res, next) => {
     });
   }
 };
+
+exports.userTransfer = (req, res, next) => {
+  const userId = req.userData._id;
+
+  if (req.body.noTelp && req.body.nominal && req.body.pin) {
+    User.findById(userId)
+      .exec()
+      .then(user => {
+        if (user.noTelp != req.body.noTelp) {
+          let saldoUser = user.saldo;
+          if (saldoUser >= req.body.nominal) {
+            if (user.pin == req.body.pin) {
+              User.find({ noTelp: req.body.noTelp })
+                .exec()
+                .then(people => {
+                  let saldoBaruPeople = people[0].saldo + parseInt(req.body.nominal);
+                  saldoUser = saldoUser - parseInt(req.body.nominal);
+                  User.findByIdAndUpdate(people[0]._id, { "saldo": saldoBaruPeople }, { new: true })
+                    .exec()
+                    .then(result => {
+                      User.findByIdAndUpdate(user._id, { "saldo": saldoUser }, { new: true })
+                        .exec()
+                        .then(finish => {
+                          res.status(200).json({
+                            message: "Successfully payment for transfer saldo"
+                          })
+                        })
+                        .catch(err => res.status(500).json({ error: err }))
+                    })
+                    .catch(err => res.status(500).json({ error: err }))
+                })
+                .catch(err => res.status(500).json({ error: err }))
+            } else {
+              res.status(400).json({ message: "Pin confirmation failed" });
+            }
+          } else {
+            res.status(400).json({ message: "Your balance is not enough, please topup for do this transaction" }); 
+          }
+        } else {
+          res.status(400).json({ message: "Can only transfer to other people" })
+        }
+      })
+      .catch(err => res.status(500).json({ error: err }))
+  } else {
+    res.status(400).json({
+      message: "Field noTelp, nominal, pin is required",
+    });
+  }
+}
