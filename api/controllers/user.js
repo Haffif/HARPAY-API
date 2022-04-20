@@ -27,6 +27,7 @@ exports.userSignup = (req, res, next) => {
                   email: req.body.email,
                   noTelp: req.body.noTelp,
                   password: hash,
+                  saldo: 0
                 });
 
                 user
@@ -129,13 +130,48 @@ exports.userUpdatePin = (req, res, next) => {
         });
       }
     } else {
-      res.status(404).json({
+      res.status(400).json({
         message: "Field konfirmasiPin is required",
       });
     }
   } else {
-    res.status(404).json({
+    res.status(400).json({
       message: "Field pin is required",
     });
   }
 };
+
+exports.userTopup = (req, res, next) => {
+  const userId = req.userData._id;
+  if (req.body.nominal) {
+    if (isNaN(req.body.nominal)) {
+      res.status(400).json({
+        message: "Field nominal must be a number",
+      }); 
+    } else {
+      User.findById(userId)
+        .select("saldo")
+        .exec()
+        .then(docs => {
+          const saldo = docs.saldo + parseInt(req.body.nominal);
+          User.findByIdAndUpdate(userId, { "saldo": saldo }, { new: true })
+            .exec()
+            .then((result) => {
+              res.status(200).json({
+                message: "Topup successfully!",
+              });
+            })
+            .catch((err) => {
+              res.status(500).json({
+                error: err,
+              });
+            });
+        })
+        .catch(err => res.status(500).json({ error: err }))
+    }
+  } else {
+    res.status(400).json({
+      message: "Field nominal is required",
+    });
+  }
+}

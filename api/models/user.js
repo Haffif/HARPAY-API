@@ -25,6 +25,7 @@ const userSchema = mongoose.Schema({
   },
   saldo: {
     type: Number,
+    required: true,
   },
 });
 
