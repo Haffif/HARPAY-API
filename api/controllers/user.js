@@ -141,6 +141,19 @@ exports.userUpdatePin = (req, res, next) => {
   }
 };
 
+exports.userGetSaldo = (req, res, next) => {
+  const userId = req.userData._id;
+  User.findById(userId)
+    .select("name saldo")
+    .exec()
+    .then(docs => {
+      res.status(404).json(docs)
+    })
+    .catch(err => {
+      res.status(500).json({ error: err })
+    })
+}
+
 exports.userTopup = (req, res, next) => {
   const userId = req.userData._id;
   if (req.body.nominal) {

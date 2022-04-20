@@ -5,7 +5,7 @@ const checkAuth = require("../middleware/checkAuth");
 
 const router = express.Router();
 
-// router.get("/cehSaldo", checkAuth, userController.userCekSaldo);
+router.get("/cekSaldo", checkAuth, userController.userGetSaldo);
 router.post("/topup", checkAuth, userController.userTopup);
 
 module.exports = router;
