@@ -156,6 +156,42 @@ exports.userUpdatePin = (req, res, next) => {
   }
 };
 
+exports.userUpdatePassword = (req, res, next) => {
+  const userId = req.userData._id;
+  if (req.body.passwordBaru) {
+    if (req.body.konfirmasiPasswordBaru) {
+      if (req.body.passwordBaru === req.body.konfirmasiPasswordBaru) {
+        bcrypt.hash(req.body.passwordBaru, 10, (err, hash) => {
+          if (err) {
+            res.status(500).json({
+              message: err,
+            });
+          } else {
+            User.findByIdAndUpdate(userId, { "password": hash }, { new: true })
+              .exec()
+              .then(result => {
+                res.status(200).json({ message: "Password updated" })
+              })
+              .catch(err => res.status(500).json({ error: err }))
+          }
+        });
+      } else {
+        res.status(401).json({
+          message: "New password confirmation failed",
+        });
+      }
+    } else {
+      res.status(400).json({
+        message: "Field konfirmasiPasswordBaru is required",
+      });
+    }
+  } else {
+    res.status(400).json({
+      message: "Field passwordBaru is required",
+    });
+  }
+}
+
 exports.userGetSaldo = (req, res, next) => {
   const userId = req.userData._id;
   User.findById(userId)
@@ -414,7 +450,7 @@ exports.userTransfer = (req, res, next) => {
             res.status(400).json({ message: "Your balance is not enough, please topup for do this transaction" }); 
           }
         } else {
-          res.status(400).json({ message: "Can only transfer to other people" })
+          res.status(400).json({ message: "Can't transfer to yourself" })
         }
       })
       .catch(err => res.status(500).json({ error: err }))
