@@ -115,7 +115,7 @@ exports.userUpdatePin = (req, res, next) => {
         User.findByIdAndUpdate(userId, { $set: req.body }, { new: true })
           .exec()
           .then((result) => {
-            res.status(200).json({
+            res.status(201).json({
               message: "Pin updated",
             });
           })
