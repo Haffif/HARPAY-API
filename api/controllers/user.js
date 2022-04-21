@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const ListrikRumah = require("../models/listrikRumah");
 const TokenRumah = require("../models/tokenRumah");
+const History = require("../models/history");
 
 exports.userSignup = (req, res, next) => {
   User.find({ email: req.body.email })
@@ -205,6 +206,8 @@ exports.userGetSaldo = (req, res, next) => {
     })
 }
 
+const jenisTransaksi = ["Top-up", "Pembayaran Listrik", "Pembelian Token", "Transfer Saldo"];
+
 exports.userTopup = (req, res, next) => {
   const userId = req.userData._id;
   if (req.body.nominal) {
@@ -214,16 +217,32 @@ exports.userTopup = (req, res, next) => {
       }); 
     } else {
       User.findById(userId)
-        .select("saldo")
+        .select("saldo name")
         .exec()
         .then(docs => {
           const saldo = docs.saldo + parseInt(req.body.nominal);
           User.findByIdAndUpdate(userId, { "saldo": saldo }, { new: true })
             .exec()
             .then((result) => {
-              res.status(200).json({
-                message: "Topup successfully!",
+              const history = new History({
+                _id: new mongoose.Types.ObjectId(),
+                userId: userId,
+                userNama: docs.name,
+                jenisTransaksi: jenisTransaksi[0],
+                jumlahTopup: parseInt(req.body.nominal),
+                nominalPengeluaran: 0,
+                idPelanggan: "-",
+                akunTujuanTransfer: 0
               });
+
+              history
+                .save()
+                .then(final => {
+                  res.status(200).json({
+                    message: "Topup successfully!",
+                  })
+                })
+                .catch(err => res.status(500).json({ error: err }))
             })
             .catch((err) => {
               res.status(500).json({
@@ -287,9 +306,25 @@ exports.userBayarListrik = (req, res, next) => {
                           User.findByIdAndUpdate(userId, { "saldo": saldoUser }, { new: true })
                             .exec()
                             .then(result3 => {
-                              res.status(201).json({
-                                message: "Payment for pembayaran listrik successfully",
+                              const history = new History({
+                                _id: new mongoose.Types.ObjectId(),
+                                userId: userId,
+                                userNama: user.name,
+                                jenisTransaksi: jenisTransaksi[1],
+                                jumlahTopup: 0,
+                                nominalPengeluaran: tagihan,
+                                idPelanggan: req.body.idPelanggan,
+                                akunTujuanTransfer: 0
                               });
+
+                              history
+                                .save()
+                                .then(final => {
+                                  res.status(201).json({
+                                    message: "Payment for pembayaran listrik successfully",
+                                  });
+                                })
+                                .catch(err => res.status(500).json({ error: err }))
                             })
                             .catch(err => res.status(500).json({ error: err }))
                         })
