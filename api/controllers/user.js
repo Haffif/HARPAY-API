@@ -1,11 +1,13 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
 
 const User = require("../models/user");
 const ListrikRumah = require("../models/listrikRumah");
 const TokenRumah = require("../models/tokenRumah");
 const History = require("../models/history");
+const Forgot = require("../models/forgot");
 
 exports.userSignup = (req, res, next) => {
   User.find({ email: req.body.email })
@@ -216,7 +218,8 @@ exports.userTopup = (req, res, next) => {
         message: "Field nominal must be a number",
       }); 
     } else {
-      User.findById(userId)
+      if (req.body.nomina < 0) {
+        User.findById(userId)
         .select("saldo name")
         .exec()
         .then(docs => {
@@ -251,6 +254,11 @@ exports.userTopup = (req, res, next) => {
             });
         })
         .catch(err => res.status(500).json({ error: err }))
+      } else {
+        res.status(400).json({
+          message: "Field nominal must be a positive number",
+        }); 
+      }
     }
   } else {
     res.status(400).json({
@@ -414,9 +422,25 @@ exports.userBeliToken = (req, res, next) => {
                         User.findByIdAndUpdate(userId, { "saldo": saldoUser }, { new: true })
                           .exec()
                           .then(final => {
-                            res.status(201).json({
-                              message: "Payment for token listrik is successfully",
+                            const history = new History({
+                              _id: new mongoose.Types.ObjectId(),
+                              userId: userId,
+                              userNama: user.name,
+                              jenisTransaksi: jenisTransaksi[2],
+                              jumlahTopup: 0,
+                              nominalPengeluaran: req.body.nominal,
+                              idPelanggan: req.body.idPelanggan,
+                              akunTujuanTransfer: 0
                             });
+
+                            history
+                              .save()
+                              .then(finish => {
+                                res.status(201).json({
+                                  message: "Payment for token listrik is successfully",
+                                });
+                              })
+                              .catch(err => res.status(500).json({ error: err }))
                           })
                           .catch(err => res.status(500).json({ error: err }))
                       })
@@ -469,9 +493,25 @@ exports.userTransfer = (req, res, next) => {
                       User.findByIdAndUpdate(user._id, { "saldo": saldoUser }, { new: true })
                         .exec()
                         .then(finish => {
-                          res.status(200).json({
-                            message: "Successfully payment for transfer saldo"
-                          })
+                          const history = new History({
+                            _id: new mongoose.Types.ObjectId(),
+                            userId: userId,
+                            userNama: user.name,
+                            jenisTransaksi: jenisTransaksi[3],
+                            jumlahTopup: 0,
+                            nominalPengeluaran: req.body.nominal,
+                            idPelanggan: "-",
+                            akunTujuanTransfer: req.body.noTelp
+                          });
+
+                          history
+                            .save()
+                            .then(last => {
+                              res.status(200).json({
+                                message: "Successfully payment for transfer saldo"
+                              });
+                            })
+                            .catch(err => res.status(500).json({ error: err }))
                         })
                         .catch(err => res.status(500).json({ error: err }))
                     })
@@ -492,6 +532,110 @@ exports.userTransfer = (req, res, next) => {
   } else {
     res.status(400).json({
       message: "Field noTelp, nominal, pin is required",
+    });
+  }
+}
+
+exports.userCekHistory = (req, res, next) => {
+  const userId = req.userData._id;
+
+  History.find({ userId: userId })
+    .exec()
+    .then(histories => {
+      let totalTopup = totalPengeluaran = 0;
+      histories.forEach(history => {
+        totalTopup += history.jumlahTopup;
+        totalPengeluaran += history.nominalPengeluaran;
+      });
+      res.status(200).json({
+        totalTransaksi: histories.length,
+        totalTopup: totalTopup,
+        totalPengeluaran: totalPengeluaran,
+        data: histories
+      });
+    })
+    .catch(err => res.status(500).json({ error: err }))
+}
+
+const sendEmail = (email, pin) => {
+  let transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    requireTLS: true,
+    auth: {
+      user: 'harpayapi@gmail.com',
+      pass: 'H4rpaynibos123#'
+    }
+  });
+  let mailOptions = {
+    from: 'harpayapi@gmail.com',
+    to: email,
+    subject: 'Forgot Password PIN For Next Confirmation Step',
+    text: `Hi, this is your pin: ${pin}, please use that because its online availabel in 3 minutes.`
+  };
+  transporter.sendMail(mailOptions, function(error, info){
+    if (error) {
+      console.log(error);
+    }
+  });
+}
+
+exports.userSendForgotPassword = (req, res, next) => {
+  if (req.body.email) {
+    User.find({ email: req.body.email })
+      .exec()
+      .then(user => {
+        if (user.length <= 0) {
+          res.status(400).json({ message: "User for that email not found" })
+        } else {
+          Forgot.find({ email: req.body.email })
+            .exec()
+            .then(user2 => {
+              // generate expired date
+              const currentDate = new Date();
+              const futureDate = new Date(currentDate.getTime() + 3*60000); // 3 minutes to to expired!!
+
+              // generate a 6 digit number pin confirmation
+              const pin = Math.floor(100000 + Math.random() * 900000);
+
+              if (user2.length > 0) {
+                Forgot.findByIdAndUpdate(user2[0]._id, { "pin": pin, "expired": futureDate }, { new: true })
+                  .exec()
+                  .then(result => {
+                    sendEmail(req.body.email, pin);
+                    res.status(200).json({
+                      message: "Pin confirmation is sending to your email"
+                    })
+                  })
+                  .catch(err => res.status(500).json({ error: err }))
+              } else {
+                // insert data to db
+                const forgot = new Forgot({
+                  _id: new mongoose.Types.ObjectId(),
+                  email: req.body.email,
+                  pin: pin,
+                  expired: futureDate
+                });
+
+                forgot
+                  .save()
+                  .then(result => {
+                    sendEmail(req.body.email, pin);
+                    res.status(200).json({
+                      message: "Pin confirmation is sending to your email"
+                    });
+                  })
+                  .catch(err => res.status(500).json({ error: err }))
+              }
+            })
+            .catch(err => res.status(500).json({ error: err }))
+        }
+      })
+      .catch(err => res.status(500).json({ error: err }))
+  } else {
+    res.status(400).json({
+      message: "Field email is required",
     });
   }
 }

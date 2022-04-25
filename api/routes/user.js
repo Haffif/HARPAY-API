@@ -9,5 +9,6 @@ router.post("/login", userController.userLogin);
 router.post("/registrasi", userController.userSignup);
 router.post("/updatePin", checkAuth, userController.userUpdatePin);
 router.post("/updatePassword", checkAuth, userController.userUpdatePassword);
+router.post("/lupaPassword", userController.userSendForgotPassword);
 
 module.exports = router;
