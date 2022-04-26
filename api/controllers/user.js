@@ -53,22 +53,22 @@ exports.userSignup = (req, res, next) => {
                   }
                 });
               } else {
-                res.status(401).json({
+                res.status(400).json({
                   message: "Pin confirmation failed",
                 }); 
               }
             } else {
-              res.status(401).json({
-                message: "Pin confirmation failed",
+              res.status(400).json({
+                message: "Pin confirmation is required",
               });
             }
           } else {
-            res.status(401).json({
+            res.status(400).json({
               message: "Password confirmation failed",
             });
           }
         } else {
-          res.status(404).json({
+          res.status(400).json({
             message: "Password confirmation is required",
           });
         }
@@ -143,7 +143,7 @@ exports.userUpdatePin = (req, res, next) => {
             });
           });
       } else {
-        res.status(401).json({
+        res.status(400).json({
           message: "Pin confirmation failed",
         });
       }
@@ -173,13 +173,13 @@ exports.userUpdatePassword = (req, res, next) => {
             User.findByIdAndUpdate(userId, { "password": hash }, { new: true })
               .exec()
               .then(result => {
-                res.status(200).json({ message: "Password updated" })
+                res.status(201).json({ message: "Password updated" })
               })
               .catch(err => res.status(500).json({ error: err }))
           }
         });
       } else {
-        res.status(401).json({
+        res.status(400).json({
           message: "New password confirmation failed",
         });
       }
@@ -201,7 +201,7 @@ exports.userGetSaldo = (req, res, next) => {
     .select("name saldo")
     .exec()
     .then(docs => {
-      res.status(404).json(docs)
+      res.status(200).json(docs)
     })
     .catch(err => {
       res.status(500).json({ error: err })
@@ -218,7 +218,7 @@ exports.userTopup = (req, res, next) => {
         message: "Field nominal must be a number",
       }); 
     } else {
-      if (req.body.nomina < 0) {
+      if (req.body.nominal > 0) {
         User.findById(userId)
         .select("saldo name")
         .exec()
@@ -241,7 +241,7 @@ exports.userTopup = (req, res, next) => {
               history
                 .save()
                 .then(final => {
-                  res.status(200).json({
+                  res.status(201).json({
                     message: "Topup successfully!",
                   })
                 })
@@ -256,7 +256,7 @@ exports.userTopup = (req, res, next) => {
         .catch(err => res.status(500).json({ error: err }))
       } else {
         res.status(400).json({
-          message: "Field nominal must be a positive number",
+          message: "Field nominal must be a positive number and non zero",
         }); 
       }
     }
@@ -273,13 +273,17 @@ exports.userCekBayarListrik = (req, res, next) => {
       .select("namaPemilik alamatRumah pembayaranBulan jumlahBayarBulan")
       .exec()
       .then(listrikRumah => {
-        if (!listrikRumah.pembayaranBulan) {
-          res.status(200).json({
-            message: "Please do a payment for this month",
-            data: listrikRumah
-          })
+        if (listrikRumah != null) {
+          if (!listrikRumah.pembayaranBulan) {
+            res.status(200).json({
+              message: "Please do a payment for this month",
+              data: listrikRumah
+            })
+          } else {
+            res.status(200).json({ message: "ID pelanggan already made payment for this month" });
+          }
         } else {
-          res.status(400).json({ message: "ID pelanggan already made payment for this month" });
+          res.status(404).json({ message: "idPelanggan not found" });
         }
       })
       .catch(err => res.status(500).json({ error: err }))
@@ -375,17 +379,21 @@ exports.userCekToken = (req, res, next) => {
       .select("namaPemilik alamatRumah sisaToken")
       .exec()
       .then(tokenRumah => {
-        if (tokenRumah.sisaToken < 5000) {
-          res.status(200).json({
-            message: "Please refill yout token!",
-            notes: "Nominal purchase of tokens that can be purchased: 20000, 50000, 100000",
-            data: tokenRumah,
-          });
+        if (tokenRumah != null) {
+          if (tokenRumah.sisaToken < 8000) {
+            res.status(200).json({
+              message: "Please refill this token!",
+              notes: "Nominal purchase of tokens that can be purchased: 20000, 50000, 100000",
+              data: tokenRumah,
+            });
+          } else {
+            res.status(200).json({
+              notes: "Nominal purchase of tokens that can be purchased: 20000, 50000, 100000",
+              data: tokenRumah
+            });
+          }
         } else {
-          res.status(200).json({
-            notes: "Nominal purchase of tokens that can be purchased: 20000, 50000, 100000",
-            data: tokenRumah
-          });
+          res.status(404).json({ message: "idPelanggan not found" });
         }
       })
       .catch(err => res.status(500).json({ error: err }))
@@ -485,37 +493,41 @@ exports.userTransfer = (req, res, next) => {
               User.find({ noTelp: req.body.noTelp })
                 .exec()
                 .then(people => {
-                  let saldoBaruPeople = people[0].saldo + parseInt(req.body.nominal);
-                  saldoUser = saldoUser - parseInt(req.body.nominal);
-                  User.findByIdAndUpdate(people[0]._id, { "saldo": saldoBaruPeople }, { new: true })
-                    .exec()
-                    .then(result => {
-                      User.findByIdAndUpdate(user._id, { "saldo": saldoUser }, { new: true })
-                        .exec()
-                        .then(finish => {
-                          const history = new History({
-                            _id: new mongoose.Types.ObjectId(),
-                            userId: userId,
-                            userNama: user.name,
-                            jenisTransaksi: jenisTransaksi[3],
-                            jumlahTopup: 0,
-                            nominalPengeluaran: req.body.nominal,
-                            idPelanggan: "-",
-                            akunTujuanTransfer: req.body.noTelp
-                          });
+                  if (people.length > 0) {
+                    let saldoBaruPeople = people[0].saldo + parseInt(req.body.nominal);
+                    saldoUser = saldoUser - parseInt(req.body.nominal);
+                    User.findByIdAndUpdate(people[0]._id, { "saldo": saldoBaruPeople }, { new: true })
+                      .exec()
+                      .then(result => {
+                        User.findByIdAndUpdate(user._id, { "saldo": saldoUser }, { new: true })
+                          .exec()
+                          .then(finish => {
+                            const history = new History({
+                              _id: new mongoose.Types.ObjectId(),
+                              userId: userId,
+                              userNama: user.name,
+                              jenisTransaksi: jenisTransaksi[3],
+                              jumlahTopup: 0,
+                              nominalPengeluaran: req.body.nominal,
+                              idPelanggan: "-",
+                              akunTujuanTransfer: req.body.noTelp
+                            });
 
-                          history
-                            .save()
-                            .then(last => {
-                              res.status(200).json({
-                                message: "Successfully payment for transfer saldo"
-                              });
-                            })
-                            .catch(err => res.status(500).json({ error: err }))
-                        })
-                        .catch(err => res.status(500).json({ error: err }))
+                            history
+                              .save()
+                              .then(last => {
+                                res.status(201).json({
+                                  message: "Successfully payment for transfer saldo"
+                                });
+                              })
+                              .catch(err => res.status(500).json({ error: err }))
+                          })
+                          .catch(err => res.status(500).json({ error: err }))
                     })
                     .catch(err => res.status(500).json({ error: err }))
+                  } else {
+                    res.status(404).json({ message: "No telp not found" });
+                  }
                 })
                 .catch(err => res.status(500).json({ error: err }))
             } else {
@@ -542,17 +554,21 @@ exports.userCekHistory = (req, res, next) => {
   History.find({ userId: userId })
     .exec()
     .then(histories => {
-      let totalTopup = totalPengeluaran = 0;
-      histories.forEach(history => {
-        totalTopup += history.jumlahTopup;
-        totalPengeluaran += history.nominalPengeluaran;
-      });
-      res.status(200).json({
-        totalTransaksi: histories.length,
-        totalTopup: totalTopup,
-        totalPengeluaran: totalPengeluaran,
-        data: histories
-      });
+      if (histories.length > 0) {
+        let totalTopup = totalPengeluaran = 0;
+        histories.forEach(history => {
+          totalTopup += history.jumlahTopup;
+          totalPengeluaran += history.nominalPengeluaran;
+        });
+        res.status(200).json({
+          totalTransaksi: histories.length,
+          totalTopup: totalTopup,
+          totalPengeluaran: totalPengeluaran,
+          data: histories
+        });
+      } else {
+        res.status(404).json({ message: "You never made a transaction" })
+      }
     })
     .catch(err => res.status(500).json({ error: err }))
 }
@@ -560,23 +576,25 @@ exports.userCekHistory = (req, res, next) => {
 const sendEmail = (email, pin) => {
   let transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    requireTLS: true,
+    port: 465,
+    secure: true,
     auth: {
-      user: 'harpayapi@gmail.com',
-      pass: 'H4rpaynibos123#'
+      user: "harpayapi@gmail.com",
+      pass: "H4rpaynibos123#"
     }
   });
   let mailOptions = {
     from: 'harpayapi@gmail.com',
-    to: email,
-    subject: 'Forgot Password PIN For Next Confirmation Step',
-    text: `Hi, this is your pin: ${pin}, please use that because its online availabel in 3 minutes.`
+    to: "rmurshal@gmail.com",
+    subject: '[PIN Confirmation for Forgot Password]',
+    text: `Hi, this is your pin: ${pin}, please use that immediately because its only availabel in 3 minutes.`
   };
   transporter.sendMail(mailOptions, function(error, info){
     if (error) {
       console.log(error);
+    }
+    else {
+      console.log("Mail sending!");
     }
   });
 }
