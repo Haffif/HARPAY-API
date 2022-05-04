@@ -20,47 +20,51 @@ exports.userSignup = (req, res, next) => {
       } else {
         if (req.body.konfirmasiPassword) {
           if (req.body.password === req.body.konfirmasiPassword) {
-            if (req.body.konfirmasiPin) {
-              if (req.body.pin === req.body.konfirmasiPin) {
-                bcrypt.hash(req.body.password, 10, (err, hash) => {
-                  if (err) {
-                    res.status(500).json({
-                      message: err,
-                    });
-                  } else {
-                    const user = new User({
-                      _id: new mongoose.Types.ObjectId(),
-                      name: req.body.name,
-                      email: req.body.email,
-                      noTelp: req.body.noTelp,
-                      password: hash,
-                      saldo: 0,
-                      pin: req.body.pin,
-                    });
-
-                    user
-                      .save()
-                      .then((result) => {
-                        res.status(201).json({
-                          message: "User created",
-                        });
-                      })
-                      .catch((err) => {
-                        res.status(500).json({
-                          error: err,
-                        });
+            if (req.body.pin.toString().length === 6) {
+              if (req.body.konfirmasiPin) {
+                if (req.body.konfirmasiPin.toString().length === 6 && req.body.pin === req.body.konfirmasiPin) {
+                  bcrypt.hash(req.body.password, 10, (err, hash) => {
+                    if (err) {
+                      res.status(500).json({
+                        message: err,
                       });
-                  }
-                });
+                    } else {
+                      const user = new User({
+                        _id: new mongoose.Types.ObjectId(),
+                        name: req.body.name,
+                        email: req.body.email,
+                        noTelp: req.body.noTelp,
+                        password: hash,
+                        saldo: 0,
+                        pin: req.body.pin,
+                      });
+
+                      user
+                        .save()
+                        .then((result) => {
+                          res.status(201).json({
+                            message: "User created",
+                          });
+                        })
+                        .catch((err) => {
+                          res.status(500).json({
+                            error: err,
+                          });
+                        });
+                    }
+                  });
+                } else {
+                  res.status(400).json({
+                    message: "Pin confirmation failed",
+                  });
+                }
               } else {
                 res.status(400).json({
-                  message: "Pin confirmation failed",
+                  message: "Pin confirmation is required",
                 });
               }
             } else {
-              res.status(400).json({
-                message: "Pin confirmation is required",
-              });
+              res.status(400).json({ message: "Pin must be 6 digit!" });
             }
           } else {
             res.status(400).json({
@@ -129,23 +133,27 @@ exports.userUpdatePin = (req, res, next) => {
   const userId = req.userData._id;
   if (req.body.pin) {
     if (req.body.konfirmasiPin) {
-      if (req.body.pin === req.body.konfirmasiPin) {
-        User.findByIdAndUpdate(userId, { $set: req.body }, { new: true })
-          .exec()
-          .then((result) => {
-            res.status(201).json({
-              message: "Pin updated",
+      if (req.body.pin.toString().length === 6 && req.body.konfirmasiPin.toString().length === 6) {
+        if (req.body.pin === req.body.konfirmasiPin) {
+          User.findByIdAndUpdate(userId, { $set: req.body }, { new: true })
+            .exec()
+            .then((result) => {
+              res.status(201).json({
+                message: "Pin updated",
+              });
+            })
+            .catch((err) => {
+              res.status(500).json({
+                error: err,
+              });
             });
-          })
-          .catch((err) => {
-            res.status(500).json({
-              error: err,
-            });
+        } else {
+          res.status(400).json({
+            message: "Pin confirmation failed",
           });
+        }
       } else {
-        res.status(400).json({
-          message: "Pin confirmation failed",
-        });
+        res.status(400).json({ message: "Pin or konfirmasiPin must be 6 digit number!" });
       }
     } else {
       res.status(400).json({
