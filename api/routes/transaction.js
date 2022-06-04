@@ -13,5 +13,6 @@ router.post("/cekTokenListrik", checkAuth, userController.userCekToken);
 router.post("/pembelianTokenListrik", checkAuth, userController.userBeliToken);
 router.post("/transferSaldo", checkAuth, userController.userTransfer);
 router.get("/cekHistory", checkAuth, userController.userCekHistory);
+router.post("/bayar", checkAuth, userController.userBayarLain);
 
 module.exports = router;

@@ -216,7 +216,7 @@ exports.userGetSaldo = (req, res, next) => {
     });
 };
 
-const jenisTransaksi = ["Top-up", "Pembayaran Listrik", "Pembelian Token", "Transfer Saldo"];
+const jenisTransaksi = ["Top-up", "Pembayaran Listrik", "Pembelian Token", "Transfer Saldo", "Pembayaran E-commerce"];
 
 exports.userTopup = (req, res, next) => {
   const userId = req.userData._id;
@@ -718,3 +718,56 @@ exports.userConfirmForgotPassword = (req, res, next) => {
     });
   }
 };
+
+exports.userBayarLain = (req, res, next) => {
+  const userId = req.userData._id;
+
+  if (req.body.jumlahBayar && req.body.pin) {
+    User.findById(userId)
+      .exec()
+      .then(user => {
+        if (user.saldo >= req.body.jumlahBayar) {
+          if (user.pin === req.body.pin) {
+            let currentSaldoUser = user.saldo;
+            let newSaldoUser = currentSaldoUser - req.body.jumlahBayar;
+
+            User.findByIdAndUpdate(user._id, { saldo: newSaldoUser }, { new: true })
+              .exec()
+              .then((result) => {
+                const history = new History({
+                  _id: new mongoose.Types.ObjectId(),
+                  userId: userId,
+                  userNama: user.name,
+                  jenisTransaksi: jenisTransaksi[4],
+                  jumlahTopup: 0,
+                  nominalPengeluaran: req.body.jumlahBayar,
+                  idPelanggan: "-",
+                  akunTujuanTransfer: 0,
+                });
+
+                history
+                  .save()
+                  .then((final) => {
+                    res.status(201).json({
+                      message: "Transaction successfully",
+                    });
+                  })
+                  .catch((err) => res.status(500).json({ error: err }));
+              })
+              .catch((err) => res.status(500).json({ error: err }));
+          } else {
+            res.status(400).json({ message: "Pin confirmation failed" });
+          }
+        } else {
+          res.status(400).json({ 
+            message: "Your balance is not enough, please topup for do this transaction" 
+          });
+        }
+      })
+      .catch((err) => res.status(500).json({ error: err }));
+  } else {
+    res.status(400).json({
+      message: "Field jumlahBayar and pin is required",
+    });
+  }
+}
