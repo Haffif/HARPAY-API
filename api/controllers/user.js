@@ -725,7 +725,7 @@ exports.userBayarLain = (req, res, next) => {
   if (req.body.jumlahBayar && req.body.pin) {
     User.findById(userId)
       .exec()
-      .then(user => {
+      .then((user) => {
         if (user.saldo >= req.body.jumlahBayar) {
           if (user.pin === req.body.pin) {
             let currentSaldoUser = user.saldo;
@@ -759,8 +759,8 @@ exports.userBayarLain = (req, res, next) => {
             res.status(400).json({ message: "Pin confirmation failed" });
           }
         } else {
-          res.status(400).json({ 
-            message: "Your balance is not enough, please topup for do this transaction" 
+          res.status(400).json({
+            message: "Your balance is not enough, please topup for do this transaction",
           });
         }
       })
@@ -770,4 +770,19 @@ exports.userBayarLain = (req, res, next) => {
       message: "Field jumlahBayar and pin is required",
     });
   }
-}
+};
+
+exports.getProfile = (req, res, next) => {
+  const userId = req.userData._id;
+
+  User.findById(userId)
+    .exec()
+    .then((user) => {
+      res.status(200).json(user);
+    })
+    .catch((err) => {
+      res.status(500).json({
+        error: err.message,
+      });
+    });
+};
